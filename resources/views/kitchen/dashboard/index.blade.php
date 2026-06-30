@@ -22,7 +22,7 @@
         </div>
     </div>
 
-    <div id="kds-board" class="flex-1 flex gap-6 overflow-hidden pb-2" data-order-count="{{ $incomingOrders->count() }}">
+    <div id="kds-board" class="flex-1 flex gap-6 overflow-hidden pb-2" data-order-count="{{ $incomingOrders->count() }}" data-total-items="{{ $incomingOrders->sum(fn($o) => $o->items->sum('quantity')) }}">
         
         <div class="flex-1 flex gap-4 overflow-x-auto custom-scrollbar items-start content-start">
             @forelse($incomingOrders as $order)
@@ -133,18 +133,74 @@
 
 @push('scripts')
 <script>
-    let isSoundEnabled = false;
+    let isSoundEnabled = localStorage.getItem('kds_sound_enabled') === 'true';
     let prevOrderCount = {{ $incomingOrders->count() }};
-    const notifSound = document.getElementById('notifSound');
+    let prevTotalItems = {{ $incomingOrders->sum(fn($o) => $o->items->sum('quantity')) }};
+    let audioCtx = null;
+
+    function getAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    // Fungsi Suara Bel Dapur (Utamakan MP3 Lokal, cadangan Synthesizer Digital)
+    function playBellSound() {
+        const notifSound = document.getElementById('notifSound');
+        if (notifSound) {
+            notifSound.currentTime = 0;
+            notifSound.play().catch(err => {
+                console.log('Memutar synthesizer audio sebagai cadangan');
+                playSynthBell();
+            });
+        } else {
+            playSynthBell();
+        }
+    }
+
+    function playSynthBell() {
+        try {
+            const ctx = getAudioContext();
+            const osc1 = ctx.createOscillator();
+            const gain1 = ctx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(800, ctx.currentTime);
+            gain1.gain.setValueAtTime(0.6, ctx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+            osc1.connect(gain1);
+            gain1.connect(ctx.destination);
+            osc1.start();
+            osc1.stop(ctx.currentTime + 0.8);
+
+            setTimeout(() => {
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(600, ctx.currentTime);
+                gain2.gain.setValueAtTime(0.6, ctx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.start();
+                osc2.stop(ctx.currentTime + 1.2);
+            }, 200);
+        } catch(e) { console.log(e); }
+    }
 
     // Toggle Izin Suara Notifikasi
     function toggleSound() {
         isSoundEnabled = !isSoundEnabled;
+        localStorage.setItem('kds_sound_enabled', isSoundEnabled ? 'true' : 'false');
+        
         const icon = document.getElementById('soundIcon');
         if(isSoundEnabled) {
             icon.setAttribute('data-lucide', 'volume-2');
             icon.classList.add('text-primary');
-            notifSound.play().catch(e => console.log('Init sound play'));
+            playBellSound(); // Mainkan suara tes saat aktif
         } else {
             icon.setAttribute('data-lucide', 'volume-x');
             icon.classList.remove('text-primary');
@@ -183,21 +239,49 @@
         let originalGlobalAjaxLoader = $.ajaxSettings.global;
         $.ajaxSetup({ global: false }); 
 
-        $('#kds-board').load(window.location.href + ' #kds-board > *', function() {
-            lucide.createIcons();
+        $.get(window.location.href, function(data) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(data, 'text/html');
+            const newBoard = doc.getElementById('kds-board');
             
-            let currentCount = parseInt($('#kds-board').attr('data-order-count'));
-            if(currentCount > prevOrderCount && isSoundEnabled) {
-                notifSound.play();
+            if (newBoard) {
+                let currentCount = parseInt(newBoard.getAttribute('data-order-count')) || 0;
+                let currentItems = parseInt(newBoard.getAttribute('data-total-items')) || 0;
+                
+                // Ganti isi dan attribute
+                $('#kds-board').html(newBoard.innerHTML);
+                $('#kds-board').attr('data-order-count', currentCount);
+                $('#kds-board').attr('data-total-items', currentItems);
+                lucide.createIcons();
+                
+                // Jika pesanan bertambah ATAU item menu bertambah dan suara aktif, mainkan bel
+                if ((currentCount > prevOrderCount || currentItems > prevTotalItems) && isSoundEnabled) {
+                    playBellSound();
+                }
+                prevOrderCount = currentCount;
+                prevTotalItems = currentItems;
             }
-            prevOrderCount = currentCount;
+        }).always(function() {
+            $.ajaxSetup({ global: originalGlobalAjaxLoader });
         });
-
-        $.ajaxSetup({ global: originalGlobalAjaxLoader });
     }
 
     $(document).ready(function() {
-        setInterval(refreshBoardSilently, 10000); 
+        const icon = document.getElementById('soundIcon');
+        if (isSoundEnabled && icon) {
+            icon.setAttribute('data-lucide', 'volume-2');
+            icon.classList.add('text-primary');
+            lucide.createIcons();
+        }
+
+        // Auto-resume audio context saat ada interaksi user di halaman
+        $(document).on('click keydown', function() {
+            if (isSoundEnabled) {
+                try { getAudioContext(); } catch(e){}
+            }
+        });
+
+        setInterval(refreshBoardSilently, 3000); 
     });
 </script>
 @endpush

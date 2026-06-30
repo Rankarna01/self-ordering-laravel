@@ -78,7 +78,7 @@
         </div>
     </div>
 
-    <audio id="notifSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+    <audio id="notifSound" src="{{ asset('sounds/bell.mp3') }}" preload="auto"></audio>
 
     <script>
         lucide.createIcons();

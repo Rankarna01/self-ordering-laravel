@@ -14,10 +14,23 @@ use App\Models\OrderItem;
 
 class OrderController extends Controller
 {
+    private function resolveTable($tableNumber)
+    {
+        $table = Table::where('table_number', $tableNumber)->first();
+        if (!$table && in_array(strtolower(trim($tableNumber ?? '')), ['counter / bungkus', 'bungkus', 'take_away', 'counter', 'take away', 'takeaway'])) {
+            $table = new Table([
+                'table_number' => 'Counter / Bungkus',
+                'capacity' => 0,
+                'status' => 'available'
+            ]);
+        }
+        return $table;
+    }
+
     public function welcome(Request $request)
     {
         $tableNumber = $request->query('table');
-        $table = Table::where('table_number', $tableNumber)->first();
+        $table = $this->resolveTable($tableNumber);
 
         // JIKA MEJA TIDAK DITEMUKAN
         if (!$table) {
@@ -61,7 +74,7 @@ class OrderController extends Controller
     public function menu(Request $request)
     {
         $tableNumber = $request->query('table');
-        $table = Table::where('table_number', $tableNumber)->first();
+        $table = $this->resolveTable($tableNumber);
 
         if (!$table) {
             $setting = Setting::first();
@@ -79,7 +92,11 @@ class OrderController extends Controller
     public function checkout(Request $request)
     {
         $tableNumber = $request->query('table');
-        $table = Table::where('table_number', $tableNumber)->firstOrFail();
+        $table = $this->resolveTable($tableNumber);
+        if (!$table) {
+            $setting = Setting::first();
+            return view('customer.invalid-table', compact('setting'));
+        }
         $setting = Setting::first();
 
         return view('customer.checkout', compact('table', 'setting'));
@@ -89,7 +106,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'order_type' => 'required|in:dine_in,take_away',
-            'table_id' => 'required_if:order_type,dine_in|nullable|exists:tables,id',
+            'table_id' => 'nullable|exists:tables,id',
             'customer_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'pickup_time' => 'nullable|string|max:100',
@@ -108,11 +125,19 @@ class OrderController extends Controller
             // Jika Take Away, table_id dikosongkan (otomatis 'Counter / Bungkus')
             $tableId = ($request->order_type === 'take_away') ? null : $request->table_id;
             
-            // 1. CEK TRANSAKSI AKTIF (MERGE ORDER LOGIC HANYA UNTUK DINE-IN DI MEJA YANG SAMA)
+            // 1. CEK TRANSAKSI AKTIF (MERGE ORDER)
             $activeOrder = null;
-            if ($tableId) {
+            if ($tableId && $tableId !== 'null') {
+                // Jika di meja fisik yang sama, satukan tagihan
                 $activeOrder = Order::where('table_id', $tableId)
                                     ->where('payment_status', 'unpaid')
+                                    ->first();
+            } elseif (!empty($request->customer_name)) {
+                // Jika pesanan Counter / Take Away (tanpa meja fisik), satukan tagihan berdasarkan nama pelanggan yang sama hari ini
+                $activeOrder = Order::whereNull('table_id')
+                                    ->where('customer_name', trim($request->customer_name))
+                                    ->where('payment_status', 'unpaid')
+                                    ->whereDate('created_at', today())
                                     ->first();
             }
 
@@ -169,7 +194,7 @@ class OrderController extends Controller
 
             // Tampilan nomor meja untuk redirect (Null-Safe)
             $tableObj = $tableId ? Table::find($tableId) : null;
-            $tableDisplay = $tableObj ? $tableObj->table_number : 'Counter / Bungkus';
+            $tableDisplay = $tableObj ? $tableObj->table_number : ($request->table_number ?: 'Counter / Bungkus');
 
             DB::commit();
 
@@ -234,15 +259,22 @@ class OrderController extends Controller
     public function checkActiveOrder(Request $request)
     {
         $tableId = $request->query('table_id');
+        $customerName = $request->query('customer_name');
 
-        if (!$tableId) {
-            return response()->json(['has_active_order' => false]);
+        $activeOrder = null;
+        if ($tableId && $tableId !== 'null') {
+            $activeOrder = Order::where('table_id', $tableId)
+                                ->where('payment_status', 'unpaid')
+                                ->latest()
+                                ->first();
+        } elseif (!empty($customerName)) {
+            $activeOrder = Order::whereNull('table_id')
+                                ->where('customer_name', trim($customerName))
+                                ->where('payment_status', 'unpaid')
+                                ->whereDate('created_at', today())
+                                ->latest()
+                                ->first();
         }
-
-        $activeOrder = Order::where('table_id', $tableId)
-                            ->where('payment_status', 'unpaid')
-                            ->latest()
-                            ->first();
 
         if ($activeOrder) {
             return response()->json([

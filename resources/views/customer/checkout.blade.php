@@ -79,7 +79,7 @@
                         <i data-lucide="utensils" class="w-5 h-5"></i>
                     </div>
                     <span class="font-bold text-sm text-secondary">Makan di Tempat</span>
-                    <span class="text-[11px] font-medium text-gray-400" x-text="'Meja ' + tableNumber"></span>
+                    <span x-show="tableId && tableId !== 'null' && tableNumber !== 'Counter / Bungkus' && tableNumber !== 'Counter'" class="text-[11px] font-medium text-gray-400" x-text="'Meja ' + tableNumber"></span>
                     
                     <div x-show="orderType === 'dine_in'" class="absolute top-2 right-2 text-primary">
                         <i data-lucide="check-circle-2" class="w-4 h-4 fill-primary text-white"></i>
@@ -94,7 +94,6 @@
                         <i data-lucide="shopping-bag" class="w-5 h-5"></i>
                     </div>
                     <span class="font-bold text-sm text-secondary">Bawa Pulang</span>
-                    <span class="text-[11px] font-bold text-purple-600">Counter / Bungkus</span>
 
                     <div x-show="orderType === 'take_away'" class="absolute top-2 right-2 text-primary">
                         <i data-lucide="check-circle-2" class="w-4 h-4 fill-primary text-white"></i>
@@ -102,18 +101,8 @@
                 </div>
             </div>
 
-            {{-- Opsi Waktu Pengambilan & Catatan Take Away --}}
-            <div x-show="orderType === 'take_away'" x-transition class="mt-4 pt-4 border-t border-dashed border-gray-200 space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-1.5">Waktu Pengambilan <span class="text-gray-400 font-normal">(Opsional)</span></label>
-                    <select x-model="pickupTime" class="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-secondary bg-gray-50 focus:bg-white transition">
-                        <option value="Secepatnya">Secepatnya / Langsung Disiapkan</option>
-                        <option value="15 Menit Lagi">15 Menit Lagi</option>
-                        <option value="30 Menit Lagi">30 Menit Lagi</option>
-                        <option value="45 Menit Lagi">45 Menit Lagi</option>
-                        <option value="1 Jam Lagi">1 Jam Lagi</option>
-                    </select>
-                </div>
+            {{-- Catatan Take Away --}}
+            <div x-show="orderType === 'take_away'" x-transition class="mt-4 pt-4 border-t border-dashed border-gray-200">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5">Catatan Bungkus <span class="text-gray-400 font-normal">(Opsional)</span></label>
                     <input type="text" x-model="takeAwayNotes" placeholder="Misal: Minta sendok plastik, saus pisah" class="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-secondary bg-gray-50 focus:bg-white transition">
@@ -168,13 +157,6 @@
                             <div class="flex justify-between items-center mt-1.5">
                                 <p class="text-xs font-bold text-gray-400" x-text="item.qty + 'x Rp ' + formatRupiah(item.price)"></p>
                                 <p class="font-bold text-secondary text-sm" x-text="'Rp ' + formatRupiah(item.price * item.qty)"></p>
-                            </div>
-                            <div x-show="orderType === 'dine_in'" class="mt-2">
-                                <label class="inline-flex items-center gap-1.5 cursor-pointer bg-gray-50 hover:bg-orange-50 px-2 py-0.5 rounded-lg border border-gray-200 transition">
-                                    <input type="checkbox" x-model="item.is_take_away" @change="localStorage.setItem('selfOrderCart', JSON.stringify(cart))" class="rounded text-primary focus:ring-primary/20 w-3.5 h-3.5">
-                                    <span class="text-[11px] font-semibold text-gray-600">🛍️ Bungkus terpisah</span>
-                                </label>
-                            </div>
                         </div>
                     </div>
                 </template>
@@ -240,9 +222,9 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('checkoutApp', () => ({
             cart: [],
-            customerName: '',
-            customerPhone: '',
-            orderType: 'dine_in',    // dine_in | take_away
+            customerName: localStorage.getItem('selfOrderCustomerName') || '',
+            customerPhone: localStorage.getItem('selfOrderCustomerPhone') || '',
+            orderType: localStorage.getItem('selfOrderType') || 'dine_in',    // dine_in | take_away
             pickupTime: 'Secepatnya',
             takeAwayNotes: '',
             isSubmitting: false,
@@ -251,11 +233,19 @@
             existingOrderNumber: '', // No. order yang sudah ada
             existingItemsCount: 0,   // Jumlah item yang sudah ada di order sebelumnya
             taxRate: {{ $setting->tax }},
-            tableId: {{ $table->id }},
+            tableId: {{ $table->id ? $table->id : 'null' }},
             tableNumber: "{{ $table->table_number }}",
 
             initCheckout() {
                 this.cart = JSON.parse(localStorage.getItem('selfOrderCart')) || [];
+                this.$watch('customerName', val => {
+                    localStorage.setItem('selfOrderCustomerName', val);
+                    if ((!this.tableId || this.tableId === 'null') && val.trim().length >= 3) {
+                        this.checkActiveOrder();
+                    }
+                });
+                this.$watch('customerPhone', val => localStorage.setItem('selfOrderCustomerPhone', val));
+                this.$watch('orderType', val => localStorage.setItem('selfOrderType', val));
                 if (this.cart.length > 0) {
                     this.checkActiveOrder();
                 } else {
@@ -270,7 +260,7 @@
              */
             checkActiveOrder() {
                 this.isCheckingOrder = true;
-                $.get("{{ route('customer.checkActiveOrder') }}", { table_id: this.tableId }, (res) => {
+                $.get("{{ route('customer.checkActiveOrder') }}", { table_id: this.tableId, customer_name: this.customerName }, (res) => {
                     if (res.has_active_order) {
                         this.hasActiveOrder    = true;
                         this.customerName      = res.customer_name;
@@ -320,14 +310,14 @@
                         customer_name: this.customerName,
                         phone: this.customerPhone,
                         order_type: this.orderType,
-                        pickup_time: this.pickupTime,
+                        pickup_time: null,
                         take_away_notes: this.takeAwayNotes,
                         items: this.cart.map(i => ({
                             id: i.id,
                             qty: i.qty,
                             price: i.price,
                             notes: i.notes || '',
-                            is_take_away: (i.is_take_away === true || i.is_take_away === 'true' || i.is_take_away === 1 || i.is_take_away === '1') ? 1 : 0
+                            is_take_away: 0
                         }))
                     },
                     success: (res) => {

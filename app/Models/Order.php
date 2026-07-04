@@ -23,7 +23,7 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(Table::class)->withDefault([
-            'table_number' => 'Counter / Bungkus',
+            'table_number' => 'Counter',
             'status' => 'occupied'
         ]);
     }
@@ -31,11 +31,11 @@ class Order extends Model
     // Accessor untuk tampilan nomor meja / bungkus yang rapi
     public function getTableNumberDisplayAttribute()
     {
-        $tableRelation = $this->getRelationValue('table');
         if ($this->order_type === 'take_away') {
-            return 'Bungkus / Take Away' . ($this->table_id && $tableRelation ? ' (' . $tableRelation->table_number . ')' : '');
+            return 'Take Away / Bungkus';
         }
-        return $tableRelation ? $tableRelation->table_number : 'Counter / Bungkus';
+        $tableRelation = $this->getRelationValue('table');
+        return ($this->table_id && $tableRelation) ? 'Meja ' . $tableRelation->table_number : 'Counter';
     }
 
     // 2. Relasi ke Detail Pesanan

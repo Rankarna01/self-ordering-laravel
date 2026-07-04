@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\Table;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -72,8 +73,10 @@ class PaymentController extends Controller
                 'status' => 'completed' // Otomatis selesai jika sudah dibayar (opsional, sesuaikan alur bisnis)
             ]);
 
-            // Ubah status meja menjadi available lagi (opsional: bisa dikosongkan saat pelanggan benar-benar pergi)
-            $order->table->update(['status' => 'available']);
+            // Ubah status meja menjadi available lagi jika pesanan menggunakan meja (Dine-In)
+            if ($order->table_id) {
+                Table::where('id', $order->table_id)->update(['status' => 'available']);
+            }
 
             DB::commit();
 

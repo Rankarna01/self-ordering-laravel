@@ -54,8 +54,9 @@
 
                         <td class="px-6 py-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-secondary font-bold shrink-0">
-                                    {{ $order->table->table_number }}
+                                <div class="w-auto min-w-[40px] px-2.5 h-10 rounded-lg {{ $order->order_type === 'take_away' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-gray-50 text-secondary border-gray-200' }} border flex items-center justify-center font-bold text-xs gap-1 shrink-0">
+                                    @if($order->order_type === 'take_away') <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i> @endif
+                                    {{ $order->table_number_display }}
                                 </div>
                                 <div>
                                     <p class="font-bold text-secondary text-sm">{{ $order->order_number }}</p>

@@ -70,8 +70,26 @@
         </tr>
         <tr>
             <td class="text-left">Meja / Tamu</td>
-            <td class="text-right">{{ $order->table->table_number }} / {{ $order->customer_name ?? 'Umum' }}</td>
+            <td class="text-right">{{ $order->table_number_display }} / {{ $order->customer_name ?? 'Umum' }}</td>
         </tr>
+        @if($order->order_type === 'take_away')
+        <tr>
+            <td class="text-left font-bold" style="color: #6B21A8;">TIPE PESANAN</td>
+            <td class="text-right font-bold" style="color: #6B21A8;">TAKE AWAY / BUNGKUS</td>
+        </tr>
+            @if($order->pickup_time)
+            <tr>
+                <td class="text-left">Waktu Pengambilan</td>
+                <td class="text-right font-bold">{{ $order->pickup_time }}</td>
+            </tr>
+            @endif
+            @if($order->take_away_notes)
+            <tr>
+                <td class="text-left">Catatan</td>
+                <td class="text-right">{{ $order->take_away_notes }}</td>
+            </tr>
+            @endif
+        @endif
         <tr>
             <td class="text-left">Kasir</td>
             <td class="text-right">{{ $order->payment->user->name ?? 'System' }}</td>
@@ -84,7 +102,12 @@
     <table class="w-full mb-1">
         @foreach($order->items as $item)
         <tr>
-            <td colspan="2" class="text-left font-bold">{{ $item->menu->name }}</td>
+            <td colspan="2" class="text-left font-bold">
+                {{ $item->menu->name }}
+                @if($item->is_take_away && $order->order_type !== 'take_away')
+                    <span style="font-size: 10px; font-weight: normal;">(BUNGKUS)</span>
+                @endif
+            </td>
         </tr>
         <tr>
             <td class="text-left" style="padding-left: 8px;">{{ $item->quantity }} x {{ number_format($item->price, 0, ',', '.') }}</td>

@@ -30,14 +30,21 @@
                             <p class="text-xs text-gray-500 mb-1">No. Order</p>
                             <p class="font-bold text-secondary">{{ $order->order_number }}</p>
                         </div>
-                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
-                            {{ $order->table->table_number }}
+                        <div class="w-auto min-w-[40px] px-2.5 h-10 rounded-xl {{ $order->order_type === 'take_away' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-primary/10 text-primary' }} flex items-center justify-center font-bold text-xs gap-1">
+                            @if($order->order_type === 'take_away') <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i> @endif
+                            {{ $order->table_number_display }}
                         </div>
                     </div>
                     <div class="p-5 flex-1 flex flex-col justify-between">
                         <div class="mb-4">
                             <p class="text-xs text-gray-500 mb-1">Pelanggan</p>
                             <p class="font-semibold text-secondary">{{ $order->customer_name ?? 'Tamu Umum' }}</p>
+                            @if($order->pickup_time)
+                                <p class="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded mt-1.5 border border-purple-100 inline-block">⏰ {{ $order->pickup_time }}</p>
+                            @endif
+                            @if($order->take_away_notes)
+                                <p class="text-[11px] text-purple-700 italic mt-1">📝 "{{ $order->take_away_notes }}"</p>
+                            @endif
                         </div>
                         <div class="bg-orange-50 rounded-xl p-4 border border-orange-100">
                             <p class="text-xs text-orange-700 mb-1">Total Tagihan</p>
@@ -68,7 +75,7 @@
                 <thead class="bg-gray-50/50 text-gray-500">
                     <tr>
                         <th class="px-6 py-4 font-semibold">No. Order</th>
-                        <th class="px-6 py-4 font-semibold text-center">Meja</th>
+                        <th class="px-6 py-4 font-semibold text-center">Meja / Tipe</th>
                         <th class="px-6 py-4 font-semibold">Metode</th>
                         <th class="px-6 py-4 font-semibold text-right">Total Tagihan</th>
                         <th class="px-6 py-4 font-semibold text-center">Waktu Bayar</th>
@@ -80,7 +87,10 @@
                     <tr class="hover:bg-gray-50/50 transition">
                         <td class="px-6 py-4 font-bold text-secondary">{{ $order->order_number }}</td>
                         <td class="px-6 py-4 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 font-bold">{{ $order->table->table_number }}</span>
+                            <span class="inline-flex items-center justify-center px-2.5 h-8 rounded-lg {{ $order->order_type === 'take_away' ? 'bg-purple-100 text-purple-700 font-bold text-xs' : 'bg-gray-100 font-bold' }}">
+                                @if($order->order_type === 'take_away') 🛍️ @endif
+                                {{ $order->table_number_display }}
+                            </span>
                         </td>
                         <td class="px-6 py-4">
                             <span class="uppercase font-semibold text-xs {{ $order->payment->payment_method == 'cash' ? 'text-green-600' : 'text-blue-600' }}">

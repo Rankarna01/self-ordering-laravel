@@ -26,18 +26,31 @@
         
         <div class="flex-1 flex gap-4 overflow-x-auto custom-scrollbar items-start content-start">
             @forelse($incomingOrders as $order)
-                <div class="w-80 shrink-0 bg-surface rounded-2xl border border-gray-100 flex flex-col h-fit max-h-full overflow-hidden shadow-sm border-t-4 border-t-danger relative group">
+                <div class="w-80 shrink-0 bg-surface rounded-2xl border border-gray-100 flex flex-col h-fit max-h-full overflow-hidden shadow-sm border-t-4 {{ $order->order_type === 'take_away' ? 'border-t-purple-600 bg-purple-50/10' : 'border-t-danger' }} relative group">
                     
-                    <div class="p-4 border-b border-gray-100 bg-white">
+                    <div class="p-4 border-b border-gray-100 {{ $order->order_type === 'take_away' ? 'bg-purple-50/60' : 'bg-white' }}">
                         <div class="flex justify-between items-start mb-3">
-                            <span class="bg-red-50 text-danger text-[10px] font-bold px-2 py-1 rounded-md border border-red-100">BARU</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="bg-red-50 text-danger text-[10px] font-bold px-2 py-1 rounded-md border border-red-100">BARU</span>
+                                @if($order->order_type === 'take_away')
+                                    <span class="bg-purple-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
+                                        <i data-lucide="shopping-bag" class="w-3 h-3"></i> BUNGKUS
+                                    </span>
+                                @endif
+                            </div>
                             <span class="text-xs font-bold text-gray-400">{{ $order->created_at->format('H:i') }}</span>
                         </div>
                         <div class="flex justify-between items-end mb-1">
-                            <h3 class="text-2xl font-black text-secondary">Meja {{ $order->table->table_number }}</h3>
+                            <h3 class="text-xl font-black {{ $order->order_type === 'take_away' ? 'text-purple-700' : 'text-secondary' }}">{{ $order->table_number_display }}</h3>
                             <p class="text-xs font-bold text-danger">{{ $order->created_at->diffForHumans(null, true) }} lalu</p>
                         </div>
                         <p class="text-xs font-medium text-gray-400">{{ $order->order_number }} • {{ $order->customer_name ?? 'Umum' }}</p>
+                        @if($order->pickup_time)
+                            <p class="mt-2 text-xs font-bold text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg inline-block border border-purple-200/60">⏰ Pengambilan: {{ $order->pickup_time }}</p>
+                        @endif
+                        @if($order->take_away_notes)
+                            <p class="mt-1.5 text-xs text-purple-700 italic bg-white p-2 rounded-lg border border-purple-200">📝 "{{ $order->take_away_notes }}"</p>
+                        @endif
                     </div>
 
                     <div class="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-4">
@@ -45,7 +58,12 @@
                             <div class="flex gap-3">
                                 <span class="font-black text-secondary text-sm">{{ $item->quantity }}x</span>
                                 <div>
-                                    <p class="font-bold text-secondary text-sm leading-tight">{{ $item->menu->name }}</p>
+                                    <p class="font-bold text-secondary text-sm leading-tight">
+                                        {{ $item->menu->name }}
+                                        @if($item->is_take_away && $order->order_type !== 'take_away')
+                                            <span class="ml-1 bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">🛍️ BUNGKUS</span>
+                                        @endif
+                                    </p>
                                     @if($item->notes)
                                         <div class="mt-1 flex items-start gap-1">
                                             <i data-lucide="alert-circle" class="w-3 h-3 text-primary shrink-0 mt-0.5"></i>
@@ -85,8 +103,11 @@
                     @forelse($cookingOrders as $order)
                         <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl flex items-center justify-between group hover:border-primary/50 transition">
                             <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-black text-secondary">Meja {{ $order->table->table_number }}</span>
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <span class="text-xs font-black {{ $order->order_type === 'take_away' ? 'text-purple-700' : 'text-secondary' }}">{{ $order->table_number_display }}</span>
+                                    @if($order->order_type === 'take_away')
+                                        <span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded">🛍️</span>
+                                    @endif
                                     <span class="text-[10px] text-gray-400">{{ $order->created_at->format('H:i') }}</span>
                                 </div>
                                 <p class="text-[10px] text-gray-400 truncate w-32">{{ $order->items->sum('quantity') }} Item</p>
@@ -112,7 +133,12 @@
                     @forelse($readyOrders as $order)
                         <div class="bg-gray-50 border border-gray-100 p-3 rounded-xl flex items-center justify-between">
                             <div>
-                                <span class="text-xs font-black text-secondary">Meja {{ $order->table->table_number }}</span>
+                                <div class="flex items-center gap-1">
+                                    <span class="text-xs font-black {{ $order->order_type === 'take_away' ? 'text-purple-700' : 'text-secondary' }}">{{ $order->table_number_display }}</span>
+                                    @if($order->order_type === 'take_away')
+                                        <span class="bg-purple-100 text-purple-700 text-[9px] font-bold px-1 py-0.5 rounded">🛍️</span>
+                                    @endif
+                                </div>
                                 <p class="text-[10px] text-gray-400 mt-0.5">{{ $order->order_number }}</p>
                             </div>
                             <div class="flex items-center gap-2">

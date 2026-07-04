@@ -35,7 +35,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($orders as $order)
                     <tr class="hover:bg-gray-50/50 transition group" 
-                        x-show="'{{ $order->table->table_number }} {{ $order->customer_name }}'.toLowerCase().includes(search.toLowerCase())">
+                        x-show="'{{ $order->table_number_display }} {{ $order->customer_name }}'.toLowerCase().includes(search.toLowerCase())">
                         
                         <td class="px-6 py-5">
                             <span class="text-lg font-black text-secondary">{{ $order->updated_at->format('H:i') }}</span>
@@ -43,11 +43,15 @@
                         </td>
 
                         <td class="px-6 py-5">
-                            <div class="w-16 h-16 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-success font-black text-xl shadow-inner mb-2">
-                                {{ $order->table->table_number }}
+                            <div class="w-auto min-w-[64px] px-3 h-16 rounded-2xl {{ $order->order_type === 'take_away' ? 'bg-purple-100 border-purple-200 text-purple-700' : 'bg-green-50 border-green-100 text-success' }} border flex items-center justify-center font-black text-sm md:text-base shadow-inner mb-2 text-center">
+                                @if($order->order_type === 'take_away') <i data-lucide="shopping-bag" class="w-4 h-4 mr-1 inline"></i> @endif
+                                {{ $order->table_number_display }}
                             </div>
                             <p class="font-bold text-secondary text-sm truncate">{{ $order->customer_name ?? 'Tamu Umum' }}</p>
                             <p class="text-[10px] text-gray-400">#{{ $order->order_number }}</p>
+                            @if($order->pickup_time)
+                                <p class="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded mt-1 border border-purple-100 inline-block">⏰ {{ $order->pickup_time }}</p>
+                            @endif
                         </td>
 
                         <td class="px-6 py-5">
@@ -57,7 +61,12 @@
                                     <div class="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center font-black text-secondary shrink-0">
                                         {{ $item->quantity }}
                                     </div>
-                                    <p class="text-sm font-medium text-secondary leading-tight truncate">{{ $item->menu->name }}</p>
+                                    <p class="text-sm font-medium text-secondary leading-tight truncate">
+                                        {{ $item->menu->name }}
+                                        @if($item->is_take_away && $order->order_type !== 'take_away')
+                                            <span class="ml-1 bg-purple-100 text-purple-700 text-[9px] font-bold px-1.5 py-0.5 rounded border border-purple-200">🛍️ BUNGKUS</span>
+                                        @endif
+                                    </p>
                                 </div>
                                 @endforeach
                             </div>

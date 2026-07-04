@@ -38,8 +38,9 @@
                             <p class="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5"><i data-lucide="clock" class="w-3 h-3"></i> {{ $order->created_at->format('d M Y, H:i') }}</p>
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary font-bold">
-                                {{ $order->table->table_number }}
+                            <span class="inline-flex items-center justify-center px-2.5 h-8 rounded-lg {{ $order->order_type === 'take_away' ? 'bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200' : 'bg-primary/10 text-primary font-bold' }}">
+                                @if($order->order_type === 'take_away') 🛍️ @endif
+                                {{ $order->table_number_display }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-gray-500 font-medium">{{ $order->customer_name ?? 'Tamu Umum' }}</td>
@@ -176,7 +177,8 @@
 
         $.get(`/admin/orders/${id}`, function(data) {
             $('#detailTitle').text('Order: ' + data.order_number);
-            $('#detailSubtitle').text(`Meja ${data.table.table_number} • ${data.customer_name ?? 'Tamu Umum'}`);
+            let tableText = data.order_type === 'take_away' ? '🛍️ Take Away / Bungkus' : 'Meja ' + (data.table ? data.table.table_number : 'Counter');
+            $('#detailSubtitle').text(`${tableText} • ${data.customer_name ?? 'Tamu Umum'}`);
             $('#detailTotalAmount').text('Rp ' + new Intl.NumberFormat('id-ID').format(data.total_amount));
             
             let itemsHtml = '';
@@ -185,10 +187,11 @@
             } else {
                 data.items.forEach(item => {
                     let notesHtml = item.notes ? `<p class="text-[10px] text-danger mt-1"><i data-lucide="alert-circle" class="w-3 h-3 inline"></i> ${item.notes}</p>` : '';
+                    let takeawayBadge = item.is_take_away && data.order_type !== 'take_away' ? `<span class="ml-1 bg-purple-100 text-purple-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-purple-200">🛍️ BUNGKUS</span>` : '';
                     itemsHtml += `
                         <tr class="hover:bg-gray-50">
                             <td class="py-4">
-                                <p class="font-semibold text-secondary">${item.menu.name}</p>
+                                <p class="font-semibold text-secondary">${item.menu.name} ${takeawayBadge}</p>
                                 <p class="text-xs text-gray-400">Rp ${new Intl.NumberFormat('id-ID').format(item.price)}</p>
                                 ${notesHtml}
                             </td>

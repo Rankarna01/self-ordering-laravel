@@ -88,29 +88,37 @@ class OrderController extends Controller
     public function storeOrder(Request $request)
     {
         $request->validate([
-            'table_id' => 'required|exists:tables,id',
+            'order_type' => 'required|in:dine_in,take_away',
+            'table_id' => 'required_if:order_type,dine_in|nullable|exists:tables,id',
             'customer_name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'pickup_time' => 'nullable|string|max:100',
+            'take_away_notes' => 'nullable|string|max:500',
             'items' => 'required|array',
             'items.*.id' => 'required|exists:menus,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric',
+            'items.*.is_take_away' => 'nullable',
         ]);
 
         DB::beginTransaction();
         try {
             $setting = Setting::first();
             
-            // 1. CEK TRANSAKSI AKTIF (MERGE ORDER LOGIC)
-            $activeOrder = Order::where('table_id', $request->table_id)
-                                ->where('payment_status', 'unpaid')
-                                ->first();
+            // Jika Take Away, table_id dikosongkan (otomatis 'Counter / Bungkus')
+            $tableId = ($request->order_type === 'take_away') ? null : $request->table_id;
+            
+            // 1. CEK TRANSAKSI AKTIF (MERGE ORDER LOGIC HANYA UNTUK DINE-IN DI MEJA YANG SAMA)
+            $activeOrder = null;
+            if ($tableId) {
+                $activeOrder = Order::where('table_id', $tableId)
+                                    ->where('payment_status', 'unpaid')
+                                    ->first();
+            }
 
             if ($activeOrder) {
                 // JIKA ADA: Gunakan Order ID yang sudah ada
                 $order = $activeOrder;
-                
-                // Kembalikan status ke 'pending' agar muncul lagi di layar KDS Dapur
                 $order->status = 'pending';
                 $order->save();
             } else {
@@ -120,51 +128,63 @@ class OrderController extends Controller
 
                 $order = Order::create([
                     'order_number' => $orderNumber,
-                    'table_id' => $request->table_id,
+                    'table_id' => $tableId,
                     'customer_name' => $request->customer_name,
                     'phone' => $request->phone,
-                    'total_amount' => 0, // Set 0 dulu, akan dikalkulasi ulang di bawah
+                    'order_type' => $request->order_type,
+                    'pickup_time' => $request->pickup_time,
+                    'take_away_notes' => $request->take_away_notes,
+                    'total_amount' => 0,
                     'status' => 'pending',
                     'payment_status' => 'unpaid'
                 ]);
 
-                // Ubah status meja menjadi terisi
-                Table::where('id', $request->table_id)->update(['status' => 'occupied']);
+                if ($tableId) {
+                    Table::where('id', $tableId)->update(['status' => 'occupied']);
+                }
             }
 
             // 2. MASUKKAN ITEM BARU KE DATABASE
             foreach($request->items as $item) {
+                $isTakeAwayItem = (isset($item['is_take_away']) && ($item['is_take_away'] === true || $item['is_take_away'] === 'true' || $item['is_take_away'] === 1 || $item['is_take_away'] === '1' || $item['is_take_away'] === 'on' || $item['is_take_away'] === 'yes')) || $request->order_type === 'take_away';
+                
                 OrderItem::create([
                     'order_id' => $order->id,
                     'menu_id' => $item['id'],
                     'quantity' => $item['qty'],
                     'price' => $item['price'],
                     'subtotal' => $item['price'] * $item['qty'],
-                    'notes' => $item['notes'] ?? null
+                    'notes' => $item['notes'] ?? null,
+                    'is_take_away' => $isTakeAwayItem
                 ]);
             }
 
-            // 3. HITUNG ULANG TOTAL TAGIHAN (Seluruh item lama + item baru)
+            // 3. HITUNG ULANG TOTAL TAGIHAN
             $subtotal = OrderItem::where('order_id', $order->id)->sum('subtotal');
-            $tax = $subtotal * ($setting->tax / 100);
+            $tax = $subtotal * (($setting->tax ?? 0) / 100);
             $total = $subtotal + $tax;
 
             // 4. UPDATE TOTAL AMOUNT
             $order->update(['total_amount' => $total]);
 
-            // Ambil nomor meja untuk redirect
-            $table = Table::find($request->table_id);
+            // Tampilan nomor meja untuk redirect (Null-Safe)
+            $tableObj = $tableId ? Table::find($tableId) : null;
+            $tableDisplay = $tableObj ? $tableObj->table_number : 'Counter / Bungkus';
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'redirect_url' => route('customer.success', ['orderNumber' => $order->order_number, 'table' => $table->table_number])
+                'redirect_url' => route('customer.success', ['orderNumber' => $order->order_number, 'table' => $tableDisplay])
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Gagal memproses pesanan.'], 500);
+            \Illuminate\Support\Facades\Log::error('StoreOrder Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Gagal: ' . $e->getMessage() . ' (Line ' . $e->getLine() . ')'
+            ], 500);
         }
     }
 

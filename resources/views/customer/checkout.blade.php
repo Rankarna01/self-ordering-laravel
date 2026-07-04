@@ -30,7 +30,8 @@
         </div>
 
         {{-- ========== RETURNING CUSTOMER BANNER (jika ada order aktif) ========== --}}
-        <div x-show="!isCheckingOrder && hasActiveOrder" x-transition class="relative overflow-hidden bg-gradient-to-br from-primary to-orange-500 p-5 rounded-3xl shadow-lg shadow-primary/30">
+        {{-- ========== RETURNING CUSTOMER BANNER (jika ada order aktif & pilih Dine-In) ========== --}}
+        <div x-show="!isCheckingOrder && hasActiveOrder && orderType === 'dine_in'" x-transition class="relative overflow-hidden bg-gradient-to-br from-primary to-orange-500 p-5 rounded-3xl shadow-lg shadow-primary/30">
             {{-- Decorative circle --}}
             <div class="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
             <div class="absolute -bottom-6 -left-6 w-32 h-32 bg-white/10 rounded-full"></div>
@@ -64,8 +65,64 @@
             </div>
         </div>
 
-        {{-- ========== FORM INPUT (jika belum ada order aktif) ========== --}}
-        <div x-show="!isCheckingOrder && !hasActiveOrder" x-transition class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+        {{-- ========== PILIH TIPE PESANAN ========== --}}
+        <div x-show="!isCheckingOrder" x-transition class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+            <h3 class="font-bold text-secondary mb-3 text-sm flex items-center gap-2">
+                <i data-lucide="shopping-bag" class="w-4 h-4 text-primary"></i> Tipe Pesanan
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+                {{-- Card Dine In --}}
+                <div @click="orderType = 'dine_in'" 
+                     :class="orderType === 'dine_in' ? 'border-primary bg-orange-50/50 text-primary shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'"
+                     class="p-4 rounded-2xl border-2 cursor-pointer transition flex flex-col items-center text-center gap-1.5 relative overflow-hidden">
+                    <div :class="orderType === 'dine_in' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'" class="w-10 h-10 rounded-xl flex items-center justify-center transition">
+                        <i data-lucide="utensils" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-bold text-sm text-secondary">Makan di Tempat</span>
+                    <span class="text-[11px] font-medium text-gray-400" x-text="'Meja ' + tableNumber"></span>
+                    
+                    <div x-show="orderType === 'dine_in'" class="absolute top-2 right-2 text-primary">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 fill-primary text-white"></i>
+                    </div>
+                </div>
+
+                {{-- Card Take Away --}}
+                <div @click="orderType = 'take_away'" 
+                     :class="orderType === 'take_away' ? 'border-primary bg-orange-50/50 text-primary shadow-sm' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'"
+                     class="p-4 rounded-2xl border-2 cursor-pointer transition flex flex-col items-center text-center gap-1.5 relative overflow-hidden">
+                    <div :class="orderType === 'take_away' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'" class="w-10 h-10 rounded-xl flex items-center justify-center transition">
+                        <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-bold text-sm text-secondary">Bawa Pulang</span>
+                    <span class="text-[11px] font-bold text-purple-600">Counter / Bungkus</span>
+
+                    <div x-show="orderType === 'take_away'" class="absolute top-2 right-2 text-primary">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 fill-primary text-white"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Opsi Waktu Pengambilan & Catatan Take Away --}}
+            <div x-show="orderType === 'take_away'" x-transition class="mt-4 pt-4 border-t border-dashed border-gray-200 space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5">Waktu Pengambilan <span class="text-gray-400 font-normal">(Opsional)</span></label>
+                    <select x-model="pickupTime" class="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-secondary bg-gray-50 focus:bg-white transition">
+                        <option value="Secepatnya">Secepatnya / Langsung Disiapkan</option>
+                        <option value="15 Menit Lagi">15 Menit Lagi</option>
+                        <option value="30 Menit Lagi">30 Menit Lagi</option>
+                        <option value="45 Menit Lagi">45 Menit Lagi</option>
+                        <option value="1 Jam Lagi">1 Jam Lagi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 mb-1.5">Catatan Bungkus <span class="text-gray-400 font-normal">(Opsional)</span></label>
+                    <input type="text" x-model="takeAwayNotes" placeholder="Misal: Minta sendok plastik, saus pisah" class="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm text-secondary bg-gray-50 focus:bg-white transition">
+                </div>
+            </div>
+        </div>
+
+        {{-- ========== FORM INPUT (jika belum ada order aktif atau pilih Take Away) ========== --}}
+        <div x-show="!isCheckingOrder && (!hasActiveOrder || orderType === 'take_away')" x-transition class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
             <h3 class="font-bold text-secondary mb-4 text-sm flex items-center gap-2">
                 <i data-lucide="user" class="w-4 h-4 text-primary"></i> Informasi Pemesan
             </h3>
@@ -95,7 +152,7 @@
         <div x-show="!isCheckingOrder" x-transition class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
             <h3 class="font-bold text-secondary mb-4 text-sm flex items-center gap-2">
                 <i data-lucide="receipt" class="w-4 h-4 text-primary"></i> 
-                <span x-text="hasActiveOrder ? 'Pesanan Tambahan' : 'Ringkasan Pesanan'"></span>
+                <span x-text="(hasActiveOrder && orderType === 'dine_in') ? 'Pesanan Tambahan' : 'Ringkasan Pesanan'"></span>
             </h3>
             <div class="space-y-4 mb-4">
                 <template x-for="item in cart" :key="item.id">
@@ -111,6 +168,12 @@
                             <div class="flex justify-between items-center mt-1.5">
                                 <p class="text-xs font-bold text-gray-400" x-text="item.qty + 'x Rp ' + formatRupiah(item.price)"></p>
                                 <p class="font-bold text-secondary text-sm" x-text="'Rp ' + formatRupiah(item.price * item.qty)"></p>
+                            </div>
+                            <div x-show="orderType === 'dine_in'" class="mt-2">
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer bg-gray-50 hover:bg-orange-50 px-2 py-0.5 rounded-lg border border-gray-200 transition">
+                                    <input type="checkbox" x-model="item.is_take_away" @change="localStorage.setItem('selfOrderCart', JSON.stringify(cart))" class="rounded text-primary focus:ring-primary/20 w-3.5 h-3.5">
+                                    <span class="text-[11px] font-semibold text-gray-600">🛍️ Bungkus terpisah</span>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -179,6 +242,9 @@
             cart: [],
             customerName: '',
             customerPhone: '',
+            orderType: 'dine_in',    // dine_in | take_away
+            pickupTime: 'Secepatnya',
+            takeAwayNotes: '',
             isSubmitting: false,
             isCheckingOrder: true,   // Loading state saat cek order aktif
             hasActiveOrder: false,   // Apakah ada order aktif di meja ini?
@@ -229,8 +295,8 @@
             formatRupiah(num) { return new Intl.NumberFormat('id-ID').format(num); },
 
             submitOrder() {
-                // Validasi nama hanya jika BUKAN returning customer (order aktif tidak ada)
-                if (!this.hasActiveOrder && !this.customerName.trim()) { 
+                // Validasi nama jika BUKAN returning customer ATAU jika pilih Take Away
+                if ((!this.hasActiveOrder || this.orderType === 'take_away') && !this.customerName.trim()) { 
                     Swal.fire({ 
                         icon: 'warning', 
                         title: 'Oops...', 
@@ -253,7 +319,16 @@
                         table_number: this.tableNumber,
                         customer_name: this.customerName,
                         phone: this.customerPhone,
-                        items: this.cart
+                        order_type: this.orderType,
+                        pickup_time: this.pickupTime,
+                        take_away_notes: this.takeAwayNotes,
+                        items: this.cart.map(i => ({
+                            id: i.id,
+                            qty: i.qty,
+                            price: i.price,
+                            notes: i.notes || '',
+                            is_take_away: (i.is_take_away === true || i.is_take_away === 'true' || i.is_take_away === 1 || i.is_take_away === '1') ? 1 : 0
+                        }))
                     },
                     success: (res) => {
                         localStorage.removeItem('selfOrderCart');

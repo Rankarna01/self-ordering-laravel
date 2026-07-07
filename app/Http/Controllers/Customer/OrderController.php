@@ -122,8 +122,8 @@ class OrderController extends Controller
         try {
             $setting = Setting::first();
             
-            // Jika Take Away, table_id dikosongkan (otomatis 'Counter / Bungkus')
-            $tableId = ($request->order_type === 'take_away') ? null : $request->table_id;
+            // Tetap catat table_id jika memesan dari meja fisik (meskipun tipe pesanan Take Away)
+            $tableId = (!empty($request->table_id) && $request->table_id !== 'null') ? $request->table_id : null;
             
             // 1. CEK TRANSAKSI AKTIF (MERGE ORDER)
             $activeOrder = null;

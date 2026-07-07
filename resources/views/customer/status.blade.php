@@ -48,6 +48,15 @@
             <h2 class="text-2xl font-extrabold text-secondary mb-2" x-text="getStatusTitle()"></h2>
             <p class="text-sm text-gray-500 px-4" x-text="getStatusDesc()"></p>
             
+            <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <span class="bg-gray-100 text-secondary text-xs font-bold px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                    #{{ $order->order_number }}
+                </span>
+                <span class="{{ $order->order_type === 'take_away' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-orange-100 text-primary border-orange-200' }} text-xs font-bold px-3 py-1.5 rounded-full border shadow-sm flex items-center gap-1">
+                    <i data-lucide="{{ $order->order_type === 'take_away' ? 'shopping-bag' : 'utensils' }}" class="w-3.5 h-3.5"></i> {{ $order->table_number_display }}
+                </span>
+            </div>
+            
             <div x-show="currentStatus === 'cancelled'" style="display: none;" class="mt-4 p-3 bg-red-50 text-danger rounded-xl text-sm font-semibold border border-red-100">
                 Mohon maaf, pesanan dibatalkan. Silakan hubungi pelayan.
             </div>

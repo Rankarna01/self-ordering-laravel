@@ -31,11 +31,14 @@ class Order extends Model
     // Accessor untuk tampilan nomor meja / bungkus yang rapi
     public function getTableNumberDisplayAttribute()
     {
+        $tableRelation = $this->getRelationValue('table');
         if ($this->order_type === 'take_away') {
+            if ($this->table_id && $tableRelation && $tableRelation->table_number !== 'Counter') {
+                return 'Take Away / Bungkus (Meja ' . $tableRelation->table_number . ')';
+            }
             return 'Take Away / Bungkus';
         }
-        $tableRelation = $this->getRelationValue('table');
-        return ($this->table_id && $tableRelation) ? 'Meja ' . $tableRelation->table_number : 'Counter';
+        return ($this->table_id && $tableRelation && $tableRelation->table_number !== 'Counter') ? 'Meja ' . $tableRelation->table_number : 'Counter';
     }
 
     // 2. Relasi ke Detail Pesanan
